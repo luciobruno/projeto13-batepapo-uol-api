@@ -32,7 +32,7 @@ app.post("/participants", async (req, res) => {
         return res.sendStatus(422)
     }
 
-    try {   
+    try {
         const participant = await db.collection("participants").findOne(req.body)
         if (participant) {
             return res.sendStatus(409)
@@ -74,7 +74,7 @@ app.post("/messages", async (req, res) => {
         res.status(500).send(err.message)
     }
 
-    const message = { from: from ,to: to, text: text, type: type, time: dayjs().format('HH:mm:ss') }
+    const message = { from: from, to: to, text: text, type: type, time: dayjs().format('HH:mm:ss') }
 
     const messageSchema = joi.object({
         to: joi.string().required(),
@@ -86,17 +86,40 @@ app.post("/messages", async (req, res) => {
 
     const validation = messageSchema.validate(message, { abortEarly: false })
 
-    if (validation.error){
+    if (validation.error) {
         return res.sendStatus(422)
     }
 
-    try{
+    try {
         await db.collection("messages").insertOne(message)
         res.sendStatus(201)
-    }catch(err){
+    } catch (err) {
         res.status(500).send(err.message)
     }
 
+})
+
+app.get("/messages", async (req, res) => {
+    const from = req.headers.user
+
+    try {
+        const messages = await db.collection("messages").find({ $or: [{ to: "Todos" }, { to: from }, { from: from }] }).toArray()
+
+        const limit = req.query.limit
+
+        if (limit) {
+            const limitSchema = joi.number().integer().min(1)
+            const validation = limitSchema.validate(limit, { abortEarly: false })
+            if(validation.error){
+                return res.sendStatus(422)
+            }
+            const newMessages = messages.slice(-limit)
+            return res.send(newMessages)
+        }
+        res.send(messages)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
 })
 
 app.listen(5000)
