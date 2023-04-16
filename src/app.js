@@ -21,23 +21,23 @@ const db = mongoClient.db()
 
 app.post("/participants", async (req, res) => {
 
-    const {name} = req.body
+    const { name } = req.body
 
     const participantsSchema = joi.object({
         name: joi.string().required()
     })
     const validation = participantsSchema.validate(req.body, { abortEarly: false })
 
-    if(validation.error){
+    if (validation.error) {
         return res.status(422).send(validation.error)
     }
 
-    try { 
-        const participant = await db.collection("participants").findOne(req.body) 
-        if(participant){
+    try {
+        const participant = await db.collection("participants").findOne(req.body)
+        if (participant) {
             return res.sendStatus(409)
         }
-        await db.collection("participants").insertOne({name:name, lastStatus: Date.now()})
+        await db.collection("participants").insertOne({ name: name, lastStatus: Date.now() })
 
         await db.collection("messages").insertOne({
             from: name,
@@ -47,7 +47,16 @@ app.post("/participants", async (req, res) => {
             time: dayjs().format('HH:mm:ss')
         })
         res.sendStatus(201)
-    }catch(err){
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
+app.get("/participants", async (req, res) => {
+    try {
+        const participants = await db.collection("participants").find().toArray()
+        res.send(participants)
+    } catch (err) {
         res.status(500).send(err.message)
     }
 })
