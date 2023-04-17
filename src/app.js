@@ -142,4 +142,28 @@ app.post("/status", async (req, res) => {
 
 })
 
+async function lastStatus(){
+    try{
+        const participants = await db.collection("participants").find().toArray()
+        participants.forEach( async (participant) => {
+            const lastStatus = (participant.lastStatus)/1000
+            const time = (Date.now())/1000
+            if(time-lastStatus>10){
+                await db.collection("participants").deleteOne({name:participant.name})
+                await db.collection("messages").insertOne({ 
+                    from: participant.name,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: dayjs().format('HH:mm:ss')
+                })
+            }
+        })
+    }catch(err){
+        res.status(500).send(err.message)
+    }
+}
+
+setInterval(lastStatus,15000)
+
 app.listen(5000)
