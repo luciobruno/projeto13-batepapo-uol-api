@@ -156,7 +156,7 @@ app.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
             return res.sendStatus(401)
         }
         await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
-        res.sendStatus(204)
+        res.sendStatus(200)
     } catch (err) {
         res.status(500).send(err.message)
     }
@@ -200,7 +200,7 @@ app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
             return res.sendStatus(401)
         }
         await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: messageUpdate })
-        res.sendStatus(204)
+        res.sendStatus(200)
     } catch (err) {
         res.status(500).send(err.message)
     }
