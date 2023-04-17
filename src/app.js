@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import joi from "joi";
 import dayjs from "dayjs";
+import { stripHtml } from "string-strip-html";
 
 const app = express()
 app.use(cors())
@@ -21,7 +22,7 @@ const db = mongoClient.db()
 
 app.post("/participants", async (req, res) => {
 
-    const { name } = req.body
+    let { name } = req.body
 
     const participantsSchema = joi.object({
         name: joi.string().required()
@@ -31,6 +32,8 @@ app.post("/participants", async (req, res) => {
     if (validation.error) {
         return res.sendStatus(422)
     }
+
+    name = stripHtml(name).result.trim()
 
     try {
         const participant = await db.collection("participants").findOne(req.body)
@@ -62,8 +65,8 @@ app.get("/participants", async (req, res) => {
 })
 
 app.post("/messages", async (req, res) => {
-    const { to, text, type } = req.body
-    const from = req.headers.user
+    let { to, text, type } = req.body
+    let from = req.headers.user
 
     try {
         const testFrom = await db.collection("participants").findOne({ name: from })
@@ -74,7 +77,7 @@ app.post("/messages", async (req, res) => {
         res.status(500).send(err.message)
     }
 
-    const message = { from: from, to: to, text: text, type: type, time: dayjs().format('HH:mm:ss') }
+    let message = { from: from, to: to, text: text, type: type, time: dayjs().format('HH:mm:ss') }
 
     const messageSchema = joi.object({
         to: joi.string().required(),
@@ -89,6 +92,11 @@ app.post("/messages", async (req, res) => {
     if (validation.error) {
         return res.sendStatus(422)
     }
+
+    message.from = stripHtml(message.from).result.trim()
+    message.to = stripHtml(message.to).result.trim()
+    message.type = stripHtml(message.type).result.trim()
+    message.text = stripHtml(message.text).result.trim()
 
     try {
         await db.collection("messages").insertOne(message)
