@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import joi from "joi";
 import dayjs from "dayjs";
+import { stripHtml } from "string-strip-html";
 
 const app = express()
 app.use(cors())
@@ -21,7 +22,8 @@ const db = mongoClient.db()
 
 app.post("/participants", async (req, res) => {
 
-    const { name } = req.body
+    let { name } = req.body
+    name = stripHtml(name).result.trim()
 
     const participantsSchema = joi.object({
         name: joi.string().required()
@@ -62,8 +64,12 @@ app.get("/participants", async (req, res) => {
 })
 
 app.post("/messages", async (req, res) => {
-    const { to, text, type } = req.body
-    const from = req.headers.user
+    let { to, text, type } = req.body
+    let from = req.headers.user
+    to = stripHtml(to).result.trim()
+    text = stripHtml(text).result.trim()
+    type = stripHtml(type).result.trim()
+    from = stripHtml(from).result.trim()
 
     try {
         const testFrom = await db.collection("participants").findOne({ name: from })
@@ -142,15 +148,83 @@ app.post("/status", async (req, res) => {
 
 })
 
-async function lastStatus(){
-    try{
+app.delete("/messages/:id", async (req, res) => {
+
+    const { user } = req.headers
+    const { id } = req.params
+
+    try {
+        const message = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+        if (!message) {
+            return res.sendStatus(404)
+        }
+        if (message.from !== user) {
+            return res.sendStatus(401)
+        }
+        await db.collection("messages").deleteOne({ _id: new ObjectId(id) })
+        res.sendStatus(204)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+
+})
+
+app.put("/messages/:id", async (req, res) => {
+    const { id } = req.params
+    let { to, text, type } = req.body
+    let from = req.headers.user
+    to = stripHtml(to).result.trim()
+    text = stripHtml(text).result.trim()
+    type = stripHtml(type).result.trim()
+    from = stripHtml(from).result.trim()
+
+    try {
+        const testFrom = await db.collection("participants").findOne({ name: from })
+        if (!testFrom) {
+            return res.sendStatus(422)
+        }
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+
+    const messageUpdate = { to: to, text: text, type: type }
+
+    const messageSchema = joi.object({
+        to: joi.string(),
+        text: joi.string(),
+        type: joi.string().valid('message', 'private_message'),
+    })
+
+    const validation = messageSchema.validate(messageUpdate, { abortEarly: false })
+
+    if (validation.error) {
+        return res.sendStatus(422)
+    }
+
+    try {
+        const message = await db.collection("messages").findOne({ _id: new ObjectId(id) })
+        if (!message) {
+            return res.sendStatus(404)
+        }
+        if (message.from !== from) {
+            return res.sendStatus(401)
+        }
+        await db.collection("messages").updateOne({ _id: new ObjectId(id) }, { $set: messageUpdate })
+        res.sendStatus(204)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
+async function lastStatus() {
+    try {
         const participants = await db.collection("participants").find().toArray()
-        participants.forEach( async (participant) => {
-            const lastStatus = (participant.lastStatus)/1000
-            const time = (Date.now())/1000
-            if(time-lastStatus>10){
-                await db.collection("participants").deleteOne({name:participant.name})
-                await db.collection("messages").insertOne({ 
+        participants.forEach(async (participant) => {
+            const lastStatus = (participant.lastStatus) / 1000
+            const time = (Date.now()) / 1000
+            if (time - lastStatus > 10) {
+                await db.collection("participants").deleteOne({ name: participant.name })
+                await db.collection("messages").insertOne({
                     from: participant.name,
                     to: 'Todos',
                     text: 'sai da sala...',
@@ -159,11 +233,11 @@ async function lastStatus(){
                 })
             }
         })
-    }catch(err){
+    } catch (err) {
         res.status(500).send(err.message)
     }
 }
 
-setInterval(lastStatus,15000)
+setInterval(lastStatus, 15000)
 
 app.listen(5000)
