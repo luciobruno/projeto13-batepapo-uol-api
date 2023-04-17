@@ -4,7 +4,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import joi from "joi";
 import dayjs from "dayjs";
-import { stripHtml } from "string-strip-html";
 
 const app = express()
 app.use(cors())
@@ -22,8 +21,7 @@ const db = mongoClient.db()
 
 app.post("/participants", async (req, res) => {
 
-    let { name } = req.body
-    name = stripHtml(name).result.trim()
+    const { name } = req.body
 
     const participantsSchema = joi.object({
         name: joi.string().required()
@@ -64,12 +62,8 @@ app.get("/participants", async (req, res) => {
 })
 
 app.post("/messages", async (req, res) => {
-    let { to, text, type } = req.body
-    let from = req.headers.user
-    to = stripHtml(to).result.trim()
-    text = stripHtml(text).result.trim()
-    type = stripHtml(type).result.trim()
-    from = stripHtml(from).result.trim()
+    const { to, text, type } = req.body
+    const from = req.headers.user
 
     try {
         const testFrom = await db.collection("participants").findOne({ name: from })
@@ -148,10 +142,10 @@ app.post("/status", async (req, res) => {
 
 })
 
-app.delete("/messages/:id", async (req, res) => {
+app.delete("/messages/:ID_DA_MENSAGEM", async (req, res) => {
 
     const { user } = req.headers
-    const { id } = req.params
+    const id= req.params.ID_DA_MENSAGEM
 
     try {
         const message = await db.collection("messages").findOne({ _id: new ObjectId(id) })
@@ -169,14 +163,10 @@ app.delete("/messages/:id", async (req, res) => {
 
 })
 
-app.put("/messages/:id", async (req, res) => {
-    const { id } = req.params
-    let { to, text, type } = req.body
-    let from = req.headers.user
-    to = stripHtml(to).result.trim()
-    text = stripHtml(text).result.trim()
-    type = stripHtml(type).result.trim()
-    from = stripHtml(from).result.trim()
+app.put("/messages/:ID_DA_MENSAGEM", async (req, res) => {
+    const id= req.params.ID_DA_MENSAGEM
+    const { to, text, type } = req.body
+    const from = req.headers.user
 
     try {
         const testFrom = await db.collection("participants").findOne({ name: from })
