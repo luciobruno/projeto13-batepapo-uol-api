@@ -110,7 +110,7 @@ app.get("/messages", async (req, res) => {
         if (limit) {
             const limitSchema = joi.number().integer().min(1)
             const validation = limitSchema.validate(limit, { abortEarly: false })
-            if(validation.error){
+            if (validation.error) {
                 return res.sendStatus(422)
             }
             const newMessages = messages.slice(-limit)
@@ -120,6 +120,26 @@ app.get("/messages", async (req, res) => {
     } catch (err) {
         res.status(500).send(err.message)
     }
+})
+
+app.post("/status", async (req, res) => {
+    const user = req.headers.user
+
+    if (!user) {
+        return res.sendStatus(404)
+    }
+
+    try {
+        const participant = await db.collection("participants").findOne({ name: user })
+        if (!participant) {
+            return res.sendStatus(404)
+        }
+        await db.collection("participants").updateOne({ name: user }, { $set: { name: user, lastStatus: Date.now() } })
+        res.sendStatus(200)
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+
 })
 
 app.listen(5000)
